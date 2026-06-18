@@ -24,10 +24,9 @@ export default function CRMExpressDashboard() {
     tempoResposta: "5s"
   });
 
-  // Busca os dados das duas rotas do backend
   const carregarDadosDoBackend = async () => {
     try {
-      // 1. Carrega Leads
+     
       const resLeads = await fetch('http://localhost:3000/api/v1/leads');
       const dadosLeads = await resLeads.json();
       setLeads(dadosLeads);
@@ -39,7 +38,6 @@ export default function CRMExpressDashboard() {
         if (atualizado) setSelectedLead(atualizado);
       }
 
-      // 2. Carrega Estatísticas Reais
       const resStats = await fetch('http://localhost:3000/api/v1/reports');
       const dadosStats = await resStats.json();
       setRealStats(dadosStats);
@@ -66,7 +64,7 @@ export default function CRMExpressDashboard() {
   return (
     <div className="flex h-screen bg-white text-[#0B1220] font-sans overflow-hidden">
       
-      {/* BARRA LATERAL */}
+      {}
       <div className="w-20 bg-[#070B14] border-r border-slate-200 flex flex-col items-center py-6 justify-between">
         <div className="flex flex-col items-center gap-8 w-full">
           <div className="w-12 h-12 relative bg-white p-1 rounded-xl shadow-lg flex items-center justify-center">
@@ -94,7 +92,7 @@ export default function CRMExpressDashboard() {
           </button>
         </div>
         
-        {/* Logo JVV no rodapé de forma circular */}
+        {}
         <div className="w-10 h-10 relative bg-white p-1 rounded-full shadow-md flex items-center justify-center overflow-hidden">
           <Image 
             src="/JVV.png" 
@@ -177,7 +175,7 @@ export default function CRMExpressDashboard() {
                   )}
                 </div>
 
-                {/* HISTÓRICO DE BALÕES — PROTEGIDO CONTRA LISTAS UNDEFINED */}
+                {}
                 <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50">
                   {(selectedLead.history || []).map((msg, index) => {
                     const isLead = msg.sender === 'lead';
@@ -216,7 +214,7 @@ export default function CRMExpressDashboard() {
           </div>
         </>
       ) : (
-        /* 📊 RELATÓRIOS EM TEMPO REAL CONECTADOS AO BACKEND */
+        
         <div className="flex-1 bg-white p-8 overflow-y-auto">
           <div className="border-b border-slate-200 pb-6 mb-8">
             <h2 className="text-xl font-extrabold text-[#0B1220] flex items-center gap-2">
@@ -225,7 +223,7 @@ export default function CRMExpressDashboard() {
             <p className="text-sm text-slate-500 mt-1">Exibindo dados dinâmicos coletados diretamente do banco de dados em memória.</p>
           </div>
 
-          {/* CARDS COM DADOS REAIS */}
+          {}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl">
               <span className="text-xs font-bold text-slate-400 uppercase">Leads na Base</span>
@@ -245,7 +243,7 @@ export default function CRMExpressDashboard() {
             </div>
           </div>
 
-          {/* TABELA DE MÉTRICAS REAIS */}
+          {}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mb-8">
             <table className="w-full text-left border-collapse">
               <thead>
