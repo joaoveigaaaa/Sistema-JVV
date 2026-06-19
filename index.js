@@ -60,7 +60,7 @@ async function processarMensagemComIA(contact, message) {
       lead.intent_detected = "Saudação (Boa noite)";
       reply = "Boa noite! Como posso ajudar?";
     }
-    // 📊 Análise de gatilhos comerciais (Preço, Prazo, Proposta, Fechamento)
+    // Análise de gatilhos comerciais (Preço, Prazo, Proposta, Fechamento)
     else if (msgLower.includes("preço") || msgLower.includes("quanto custa") || msgLower.includes("valor") || msgLower.includes("mensalidade")) {
       score_increment = 10;
       lead.intent_detected = "Perguntou preço";
@@ -153,7 +153,7 @@ app.get('/api/v1/leads', (req, res) => {
   return res.status(200).json(listaLeads);
 });
 
-// 📊 ROTA NOVA: Retorna métricas REAIS calculadas com base nos leads atuaiss
+// Retorna métricas REAIS calculadas com base nos leads atuaiss
 app.get('/api/v1/reports', (req, res) => {
   const leads = Object.values(leadsDatabase);
   const totalLeads = leads.length;
@@ -199,6 +199,6 @@ app.post('/api/v1/webhooks/incoming', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`====================================================`);
-  console.log(`🚀 BACKEND JVV SISTEMAS RODANDO NA PORTA ${PORT}`);
+  console.log(`BACKEND JVV SISTEMAS RODANDO NA PORTA ${PORT}`);
   console.log(`====================================================`);
 });
