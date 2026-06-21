@@ -1,11 +1,13 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { io } from 'socket.io-client';
 import { 
-  User, MessageSquare, Flame, Snowflake, AlertCircle, 
-  CheckCircle2, Send, ShieldAlert, BarChart3, RefreshCw,
-  TrendingUp, Calendar, LayoutGrid, Users, Settings, Filter, ChevronDown, BotMessageSquare, Cpu, Megaphone
+  User, MessageSquare, CheckCircle2, Send, BarChart3, RefreshCw,
+  Calendar, LayoutGrid, Settings, BotMessageSquare, Cpu
 } from 'lucide-react';
+
+const SOCKET_SERVER_URL = 'http://localhost:3000';
 
 export default function CRMExpressDashboard() {
   const [leads, setLeads] = useState([]);
@@ -29,22 +31,20 @@ export default function CRMExpressDashboard() {
     tempoResposta: "0s"
   });
 
+  const mapearSingleLead = (lead) => {
+    const historico = lead.history || [];
+    const ultimaMensagem = historico.length > 0 ? historico[historico.length - 1] : null;
+    const iaRespondeu = ultimaMensagem?.sender === 'ai'; // Otimizado com Optional Chaining
+    return { ...lead, iaAtiva: iaRespondeu };
+  };
+
   const carregarDadosDoBackend = async () => {
     try {
-      const resLeads = await fetch('http://localhost:3000/api/v1/leads');
+      const resLeads = await fetch(`${SOCKET_SERVER_URL}/api/v1/leads`);
       const dadosLeads = await resLeads.json();
       
-      // --- VERIFICAÇÃO DE RESPOSTA DA IA ---
-      const leadsMapeados = dadosLeads.map(lead => {
-        const historico = lead.history || [];
-        const ultimaMensagem = historico.length > 0 ? historico[historico.length - 1] : null;
-        const iaRespondeu = ultimaMensagem && ultimaMensagem.sender === 'ai';
-
-        if (iaRespondeu) {
-          return { ...lead, iaAtiva: true }; 
-        }
-        return { ...lead, iaAtiva: false };
-      });
+      const listaSegura = Array.isArray(dadosLeads) ? dadosLeads : [];
+      const leadsMapeados = listaSegura.map(mapearSingleLead);
 
       setLeads(leadsMapeados);
       
@@ -55,7 +55,7 @@ export default function CRMExpressDashboard() {
         if (atualizado) setSelectedLead(atualizado);
       }
 
-      const resStats = await fetch('http://localhost:3000/api/v1/reports');
+      const resStats = await fetch(`${SOCKET_SERVER_URL}/api/v1/reports`);
       const dadosStats = await resStats.json();
       setRealStats(dadosStats);
     } catch (error) {
@@ -65,13 +65,32 @@ export default function CRMExpressDashboard() {
 
   useEffect(() => {
     carregarDadosDoBackend();
-    const interval = setInterval(carregarDadosDoBackend, 3000); 
-    return () => clearInterval(interval);
-  }, [selectedLead, intervaloDatas]); 
+
+    const socket = io(SOCKET_SERVER_URL);
+
+    socket.on('connect', () => {
+      console.log('🔌 Conectado ao fluxo de dados em tempo real (Socket.io)');
+    });
+
+    socket.on('nova_mensagem_chat', () => {
+      carregarDadosDoBackend();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [intervaloDatas]); 
+
+  useEffect(() => {
+    if (selectedLead && leads.length > 0) {
+      const atualizado = leads.find(l => l.contact === selectedLead.contact);
+      if (atualizado) setSelectedLead(atualizado);
+    }
+  }, [leads]);
 
   const handleSendMessage = () => {
     if (!typedMessage.trim() || !selectedLead) return;
-    const novoHistorico = [...(selectedLead.history || []), { sender: 'agent', text: typedMessage }];
+    const novoHistorico = [...(selectedLead.history || []), { sender: 'agent', text: typedMessage, timestamp: new Date().toISOString() }];
     setSelectedLead({ ...selectedLead, history: novoHistorico });
     setTypedMessage('');
   };
@@ -99,6 +118,27 @@ export default function CRMExpressDashboard() {
       return l;
     });
     setLeads(leadsAtualizados);
+  };
+
+  const renderBadgeCanal = (canal) => {
+    const nomeCanal = canal ? canal.toLowerCase() : 'whatsapp';
+    if (nomeCanal === 'instagram') {
+      return <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider">IG</span>;
+    }
+    return <span className="bg-emerald-500 text-white text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider">WPP</span>;
+  };
+
+  // Funções para simplificar a estilização do histórico do Chat e evitar ternários complexos inline
+  const obterEstiloBalaoChat = (sender) => {
+    if (sender === 'lead') return 'bg-white text-slate-800 border border-slate-100 rounded-tl-none';
+    if (sender === 'ai') return 'bg-blue-50 text-slate-800 rounded-tr-none border border-blue-100';
+    return 'bg-[#0B1220] text-white rounded-tr-none';
+  };
+
+  const obterNomeRemetente = (sender) => {
+    if (sender === 'lead') return 'Cliente';
+    if (sender === 'ai') return '🤖 Motor IA JVV';
+    return 'Você (JVV Comercial)';
   };
 
   return (
@@ -218,9 +258,7 @@ export default function CRMExpressDashboard() {
                 <div className="bg-white border border-[#E2E8F0] rounded-xl p-5 shadow-sm relative">
                   <span className="text-xs font-semibold text-slate-500 block tracking-wide">Status da oportunidade ({periodoSelecionado})</span>
                   <div className="text-4xl font-bold text-[#0F172A] mt-2">{realStats.totalLeads}</div>
-                  <div className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded inline-block mt-2">
-                  <span className="text-slate-400 font-normal"></span>
-                  </div>
+                  <div className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded inline-block mt-2"></div>
 
                   <div className="mt-8 flex items-center justify-center relative h-32">
                     <div className="w-24 h-24 rounded-full border-8 border-slate-100 border-t-[#FF7A1A] flex items-center justify-center font-bold text-slate-700 text-sm">
@@ -237,9 +275,7 @@ export default function CRMExpressDashboard() {
                 <div className="bg-white border border-[#E2E8F0] rounded-xl p-5 shadow-sm relative">
                   <span className="text-xs font-semibold text-slate-500 block tracking-wide">Volume Estimado ({periodoSelecionado})</span>
                   <div className="text-4xl font-bold text-[#0F172A] mt-2">{realStats.faturamento}</div>
-                  <div className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded inline-block mt-2">
-                   <span className="text-slate-400 font-normal"></span>
-                  </div>
+                  <div className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded inline-block mt-2"></div>
 
                   <div className="mt-10 flex flex-col items-center justify-center h-32 text-center text-xs space-y-2">
                     <BarChart3 className="text-[#0B1220]" size={40} />
@@ -251,9 +287,7 @@ export default function CRMExpressDashboard() {
                 <div className="bg-white border border-[#E2E8F0] rounded-xl p-5 shadow-sm relative">
                   <span className="text-xs font-semibold text-slate-500 block tracking-wide">Taxa de conversão ({periodoSelecionado})</span>
                   <div className="text-4xl font-bold text-[#0F172A] mt-2">{realStats.taxaConversao}</div>
-                  <div className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded inline-block mt-2">
-                    <span className="text-slate-400 font-normal"></span>
-                  </div>
+                  <div className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded inline-block mt-2"></div>
 
                   <div className="mt-8 flex items-center justify-center h-32">
                     <div className="w-24 h-24 rounded-full border-8 border-slate-100 border-t-[#FF7A1A] border-r-[#FF7A1A] flex items-center justify-center font-bold text-slate-700 text-sm">
@@ -265,7 +299,7 @@ export default function CRMExpressDashboard() {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white border border-[#E2E8F0] rounded-xl p-5 shadow-sm">
+                <div className="bg-white border border-[#E2E8F0] rounded-xl p-5 shadow-sm">
                   <div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Pipeline de Vendas (Volume) ({periodoSelecionado})</span>
                   </div>
@@ -304,7 +338,6 @@ export default function CRMExpressDashboard() {
 
                   <div className="space-y-3">
                     
-                    {/* Card 1: Resposta da IA */}
                     <div className="flex items-center justify-between p-3 bg-blue-50/60 border border-blue-100 rounded-xl transition hover:bg-blue-50">
                       <div className="flex items-center gap-2.5">
                         <div className="p-2 bg-blue-500 text-white rounded-lg shadow-sm">
@@ -320,12 +353,9 @@ export default function CRMExpressDashboard() {
                       </span>
                     </div>
 
-                    {/* Card 2: Atendimento Humano */}
                     <div className="flex items-center justify-between p-3 bg-amber-50/60 border border-amber-100 rounded-xl transition hover:bg-amber-50">
                       <div className="flex items-center gap-2.5">
-                        <div className="p-2 bg-[#FF7A1A] text-white rounded-lg shadow-sm">
-                          <User size={16} />
-                        </div>
+                        <div className="p-2 bg-white text-slate-700 rounded-lg shadow-sm border border-slate-200 flex items-center justify-center font-bold text-[10px]">CRM</div>
                         <div>
                           <p className="text-xs font-bold text-slate-800">Atendimento Humano</p>
                           <p className="text-[11px] text-slate-500">Em triagem / Conversas ativas com o comercial</p>
@@ -336,7 +366,6 @@ export default function CRMExpressDashboard() {
                       </span>
                     </div>
 
-                    {/* Card 3: Convertidos */}
                     <div className="flex items-center justify-between p-3 bg-emerald-50/60 border border-emerald-100 rounded-xl transition hover:bg-emerald-50">
                       <div className="flex items-center gap-2.5">
                         <div className="p-2 bg-emerald-500 text-white rounded-lg shadow-sm">
@@ -372,10 +401,16 @@ export default function CRMExpressDashboard() {
                       <div 
                         key={lead.contact}
                         onClick={() => setSelectedLead(lead)}
+                        onKeyDown={(e) => e.key === 'Enter' && setSelectedLead(lead)}
+                        role="button"
+                        tabIndex={0}
                         className={`p-3 rounded-lg cursor-pointer transition text-xs border ${selectedLead?.contact === lead.contact ? 'bg-orange-50 border-[#FF7A1A] font-medium shadow-inner' : 'bg-white border-transparent hover:bg-slate-100'}`}
                       >
                         <div className="flex justify-between font-bold text-slate-800 items-baseline">
-                          <span className="truncate">{lead.contact}</span>
+                          <div className="flex items-center gap-2 truncate">
+                            {renderBadgeCanal(lead.canal)}
+                            <span className="truncate">{lead.contact}</span>
+                          </div>
                           <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold shrink-0 ${lead.iaAtiva ? 'bg-blue-50 text-blue-700' : 'text-[#FF7A1A]'}`}>
                             Sc: {lead.score}
                           </span>
@@ -392,16 +427,19 @@ export default function CRMExpressDashboard() {
                   <>
                     <div className="p-4 border-b border-[#E2E8F0] flex justify-between items-center bg-slate-50/50 shadow-sm z-10 shrink-0">
                       <div>
-                        <h4 className="font-bold text-xs text-[#0F172A]">{selectedLead.contact}</h4>
+                        <div className="flex items-center gap-2">
+                          {renderBadgeCanal(selectedLead.canal)}
+                          <h4 className="font-bold text-xs text-[#0F172A]">{selectedLead.contact}</h4>
+                        </div>
                         <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">Status: {selectedLead.classification} {selectedLead.iaAtiva && <BotMessageSquare size={12} className="text-blue-500 animate-pulse"/>}</p>
                       </div>
                     </div>
                     <div className="flex-1 overflow-y-auto p-4 space-y-3.5 text-xs bg-slate-50/20 z-0">
-                      {(selectedLead.history || []).map((msg, idx) => (
-                        <div key={idx} className={`flex ${msg.sender === 'lead' ? 'justify-start' : 'justify-end'}`}>
-                          <div className={`p-2.5 rounded-xl max-w-md ${msg.sender === 'lead' ? 'bg-white text-slate-800 border border-slate-100 rounded-tl-none' : msg.sender === 'ai' ? 'bg-blue-50 text-slate-800 rounded-tr-none border border-blue-100' : 'bg-[#0B1220] text-white rounded-tr-none'}`}>
+                      {(selectedLead.history || []).map((msg) => (
+                        <div key={msg.id || msg.timestamp || Math.random().toString()} className={`flex ${msg.sender === 'lead' ? 'justify-start' : 'justify-end'}`}>
+                          <div className={`p-2.5 rounded-xl max-w-md ${obterStyleBalaoChat(msg.sender)}`}>
                             <div className="text-[9px] font-bold mb-1 uppercase tracking-wider text-slate-400 select-none">
-                              {msg.sender === 'lead' ? 'Cliente' : msg.sender === 'ai' ? '🤖 Motor IA JVV' : 'Você (JVV Comercial)'}
+                              {obterNomeRemetente(msg.sender)}
                             </div>
                             <p>{msg.text}</p>
                           </div>
@@ -414,7 +452,7 @@ export default function CRMExpressDashboard() {
                         value={typedMessage}
                         onChange={(e) => setTypedMessage(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                        placeholder="Intervenção Humana: Escreva uma resposta..." 
+                        placeholder={`Intervenção Humana no ${selectedLead.canal === 'instagram' ? 'Instagram' : 'WhatsApp'}: Escreva uma resposta...`} 
                         className="flex-1 bg-slate-50 border border-[#E2E8F0] rounded-lg px-3.5 py-2.5 text-xs text-[#0B1220] focus:outline-none focus:border-[#FF7A1A] transition"
                       />
                       <button onClick={handleSendMessage} className="p-2.5 bg-[#FF7A1A] text-white rounded-xl shadow-md hover:bg-[#E66910] transition shrink-0"><Send size={15} /></button>
@@ -466,7 +504,10 @@ export default function CRMExpressDashboard() {
                           className="bg-slate-50 p-2.5 rounded-lg border border-[#E2E8F0] cursor-grab active:cursor-grabbing hover:border-[#FF7A1A] transition-all text-xs relative"
                         >
                           {lead.iaAtiva && <BotMessageSquare size={13} className="text-blue-500 absolute top-2 right-2 animate-pulse"/>}
-                          <p className="font-bold text-slate-800 truncate pr-4">{lead.contact}</p>
+                          <div className="flex items-center gap-1.5 mb-1">
+                            {renderBadgeCanal(lead.canal)}
+                            <p className="font-bold text-slate-800 truncate pr-4">{lead.contact}</p>
+                          </div>
                           <p className="text-[11px] text-slate-400 line-clamp-1 mt-1">{lead.lastMessage}</p>
                           <div className="mt-2 text-[9px] text-[#FF7A1A] font-semibold">Score: {lead.score}</div>
                         </div>
