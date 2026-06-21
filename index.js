@@ -31,7 +31,8 @@ async function processarMensagemComIA(contact, message) {
         history: [],
         intent_detected: 'Conversa genérica',
         urgency_level: 'low',
-        lastMessage: message
+        lastMessage: message,
+        createdAt: new Date().toISOString()
       };
     }
 
@@ -43,6 +44,7 @@ async function processarMensagemComIA(contact, message) {
     let score_increment = 5; 
     let reply = "Entendi! Como posso te ajudar a organizar melhor as vendas da sua empresa?";
     let request_human_intervention = false;
+    let forcarQuenteEstrategico = false;
 
     // 🌟 Validação de Saudações (Bom dia / Boa tarde / Boa noite)
     if (msgLower.includes("bom dia")) {
@@ -75,24 +77,29 @@ async function processarMensagemComIA(contact, message) {
       score_increment = 20;
       lead.intent_detected = "Pediu proposta ou reunião";
       lead.urgency_level = "medium";
-      reply = "Perfeito! Vou preparar a proposta customizada. Prefere que eu chame um specialist agora para agendarmos?";
+      reply = "Perfeito! Vou preparar a proposta customizada. Prefere que eu chame um especialista agora para agendarmos?";
     }
-    else if (msgLower.includes("pagamento") || msgLower.includes("link") || msgLower.includes("comprar") || msgLower.includes("aceito") || msgLower.includes("fechar")) {
-      score_increment = 25;
+    // 🔥 GATILHO CRÍTICO: Intenção imediata de Fechamento
+    else if (msgLower.includes("pagamento") || msgLower.includes("link") || msgLower.includes("comprar") || msgLower.includes("aceito") || msgLower.includes("fechar") || msgLower.includes("quero fechar")) {
+      score_increment = 100; // Define o incremento máximo para garantir o topo do score instantaneamente
       lead.intent_detected = "Intenção clara de fechamento / Pediu link de pagamento";
-      lead.urgency_level = "high";
+      lead.urgency_level = "high"; // Define o nível como prioritário (alta urgência)
       request_human_intervention = true;
+      forcarQuenteEstrategico = true; // Flag para ignorar travas de cálculo
       reply = "Excelente escolha! Um de nossos vendedores já foi notificado e está entrando na conversa para gerar o seu link de pagamento seguro e finalizar sua ativação.";
     }
 
     // Atualiza histórico e score acumulativo
     lead.history.push({ sender: 'lead', text: message });
     lead.history.push({ sender: 'ai', text: reply });
-    lead.score = Math.min(lead.score + score_increment, 100);
+    
+    // Se for intenção de fechamento, crava direto em 100. Caso contrário, acumula.
+    lead.score = forcarQuenteEstrategico ? 100 : Math.min(lead.score + score_increment, 100);
 
-    // Classificação oficial
-    if (lead.score >= 75 || request_human_intervention) {
+    // Classificação oficial atualizada com base nas travas de fechamento
+    if (lead.score >= 75 || request_human_intervention || forcarQuenteEstrategico) {
       lead.classification = 'Quente (Prioritário)';
+      lead.statusChangedAt = new Date().toISOString();
     } else if (lead.score >= 40) {
       lead.classification = 'Morno';
     } else {
@@ -104,6 +111,7 @@ async function processarMensagemComIA(contact, message) {
     console.log(`🎯 Intenção Detectada: ${lead.intent_detected.toUpperCase()}`);
     console.log(`📈 Incremento: +${score_increment} | NOVO SCORE: ${lead.score}`);
     console.log(`🏷️ Classificação: ${lead.classification.toUpperCase()}`);
+    console.log(`🚨 Urgência: ${lead.urgency_level.toUpperCase()}`);
     console.log(`🤖 Resposta do Robô: "${reply}"`);
     console.log(`====================================================\n`);
 
@@ -112,24 +120,21 @@ async function processarMensagemComIA(contact, message) {
   }
 }
 
-// Rota atualizada para o Frontend (inglês) e Power BI (português)
+// Rota para o Frontend e Power BI
 app.get('/api/v1/leads', (req, res) => {
   const listaLeads = Object.values(leadsDatabase).map(lead => {
-    // Garante que o lead tenha uma data de criação
     if (!lead.createdAt) {
       lead.createdAt = new Date().toISOString();
     }
     
-    // Calcula o valor estimado
     let valorPossivel = 0;
-    if (lead.score >= 75) {
+    if (lead.score >= 75 || lead.classification.includes('Quente')) {
       valorPossivel = 197; 
     } else if (lead.score >= 40) {
       valorPossivel = 50;
     }
 
     return {
-      // --- CAMPOS QUE O FRONTEND PRECISA ---
       contact: lead.contact,
       score: lead.score,
       classification: lead.classification,
@@ -137,9 +142,8 @@ app.get('/api/v1/leads', (req, res) => {
       lastMessage: lead.lastMessage,
       history: lead.history || [],
       createdAt: lead.createdAt,
-      urgency_level: lead.urgency_level || "baixa",
+      urgency_level: lead.urgency_level || "low",
 
-      // --- CAMPOS QUE O POWER BI PRECISA ---
       contato: lead.contact,
       classificacao: lead.classification,
       intencao_detectada: lead.intent_detected,
@@ -153,22 +157,18 @@ app.get('/api/v1/leads', (req, res) => {
   return res.status(200).json(listaLeads);
 });
 
-// Retorna métricas REAIS calculadas com base nos leads atuaiss
+// Retorna métricas REAIS calculadas com base nos leads atuais
 app.get('/api/v1/reports', (req, res) => {
   const leads = Object.values(leadsDatabase);
   const totalLeads = leads.length;
   
-  const totalQuentes = leads.filter(l => l.score >= 75).length;
-  const totalMornos = leads.filter(l => l.score >= 40 && l.score < 75).length;
-  const totalFrios = leads.filter(l => l.score < 40).length;
+  const totalQuentes = leads.filter(l => l.score >= 75 || l.classification.includes('Quente')).length;
+  const totalMornos = leads.filter(l => l.score >= 40 && l.score < 75 && !l.classification.includes('Quente')).length;
+  const totalFrios = leads.filter(l => l.score < 40 && !l.classification.includes('Quente')).length;
 
-  // Regra de negócio real: faturamento estimado baseado em leads quentes (ex: R$197 por plano comercial)
   const faturamentoEstimado = totalQuentes * 197;
-
-  // Taxa de conversão real baseada em quantos leads viraram quentes do total
   const taxaConversao = totalLeads > 0 ? ((totalQuentes / totalLeads) * 100).toFixed(1) : 0;
 
-  // Resposta estruturada para o frontend
   return res.status(200).json({
     totalLeads,
     totalQuentes,
@@ -180,7 +180,7 @@ app.get('/api/v1/reports', (req, res) => {
   });
 });
 
-// Rota do Webhook que vai receber as mensagens
+// Rota do Webhook que recebe as mensagens
 app.post('/api/v1/webhooks/incoming', (req, res) => {
   const { contact, message } = req.body;
 
