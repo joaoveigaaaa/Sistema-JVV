@@ -24,9 +24,13 @@ O projeto foi construído utilizando as seguintes tecnologias:
 A integração com o Power BI fornece visões analíticas divididas em:
 
 | Período | Foco do Relatório |
+
 | **Diário** | Produtividade dos vendedores, taxa de resposta e leads quentes gerados no dia. |
+
 | **Semanal** | Evolução do funil de vendas, gargalos no atendimento e acertos da IA. |
+
 | **Mensal** | Fechamento de metas, faturamento acumulado e ROI dos canais de captação. |
+
 | **Anual** | Análise macro de crescimento, sazonalidade de mercado e previsão de receita. |
 
 
