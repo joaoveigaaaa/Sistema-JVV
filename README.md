@@ -16,8 +16,8 @@ Toda a robustez dos dados é garantida por um ecossistema corporativo, utilizand
 O projeto foi construído utilizando as seguintes tecnologias:
 
 * **Inteligência Artificial:** [Inserir a tecnologia/API aqui, ex: OpenAI API, Python scikit-learn, etc.] — Responsável pela análise de sentimento, intenção e cálculo do Score do lead.
-* **Banco de Dados:** ![Oracle] — Armazenamento centralizado, seguro e de alta performance de todos os dados de clientes, logs de interação e pontuações.
-* **Business Intelligence:** ![Power Bi] — Camada de relatórios gerenciais e dashboards integrados diretamente ao banco Oracle.
+* **Banco de Dados:** Oracle — Armazenamento centralizado, seguro e de alta performance de todos os dados de clientes, logs de interação e pontuações.
+* **Business Intelligence:** Power Bi — Camada de relatórios gerenciais e dashboards integrados diretamente ao banco Oracle.
 
 ## Estrutura de Relatórios (Power BI)
 
