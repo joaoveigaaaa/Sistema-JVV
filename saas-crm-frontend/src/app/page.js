@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { io } from 'socket.io-client';
 import { 
+  
   User, MessageSquare, CheckCircle2, Send, BarChart3, RefreshCw,
   Calendar, LayoutGrid, Settings, BotMessageSquare, Cpu
 } from 'lucide-react';
@@ -437,7 +438,7 @@ export default function CRMExpressDashboard() {
                     <div className="flex-1 overflow-y-auto p-4 space-y-3.5 text-xs bg-slate-50/20 z-0">
                       {(selectedLead.history || []).map((msg) => (
                         <div key={msg.id || msg.timestamp || Math.random().toString()} className={`flex ${msg.sender === 'lead' ? 'justify-start' : 'justify-end'}`}>
-                          <div className={`p-2.5 rounded-xl max-w-md ${obterStyleBalaoChat(msg.sender)}`}>
+                          <div className={`p-2.5 rounded-xl max-w-md ${obterEstiloBalaoChat(msg.sender)}`}>
                             <div className="text-[9px] font-bold mb-1 uppercase tracking-wider text-slate-400 select-none">
                               {obterNomeRemetente(msg.sender)}
                             </div>
