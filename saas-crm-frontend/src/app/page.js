@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { io } from 'socket.io-client';
 import { 
-  
+
   User, MessageSquare, CheckCircle2, Send, BarChart3, RefreshCw,
   Calendar, LayoutGrid, Settings, BotMessageSquare, Cpu
 } from 'lucide-react';
@@ -219,8 +219,7 @@ export default function CRMExpressDashboard() {
               <button 
                 onClick={() => { setPeriodoSelecionado('Este Ano'); setIntervaloDatas({inicio: '2026-01-01', fim: '2026-06-20'}) }}
                 className={`px-3 py-1.5 rounded-lg ${periodoSelecionado === 'Este Ano' ? 'bg-[#0B1220] text-white' : 'hover:bg-slate-200'}`}
-              >
-                Este Ano
+              >Este Ano
               </button>
             </div>
 
