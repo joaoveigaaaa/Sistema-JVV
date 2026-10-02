@@ -34,7 +34,3 @@ A integração com o Power BI fornece visões analíticas divididas em:
 | **Anual** | Análise macro de crescimento, sazonalidade de mercado e previsão de receita. |
 
 
-## Integração com o Banco de Dados
-
-O sistema utiliza o **Oracle Database**. Para configurar a conexão da aplicação com o banco de dados.
-
